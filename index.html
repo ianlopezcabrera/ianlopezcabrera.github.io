@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ian@dev:~$</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&display=swap');
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:       #0a0d0a;
+  --panel:    #0e120e;
+  --line:     #1f2b1f;
+  --green:    #5fd97a;
+  --green-dim:#3a8f4f;
+  --amber:    #d9a85f;
+  --text:     #c8d6c8;
+  --muted:    #5a6b5a;
+  --red:      #d96f5f;
+}
+
+body {
+  font-family: 'JetBrains Mono', monospace;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+::selection { background: var(--green); color: var(--bg); }
+
+/* Subtle CRT flicker on bg */
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background: repeating-linear-gradient(0deg, rgba(0,0,0,0.15) 0px, rgba(0,0,0,0.15) 1px, transparent 1px, transparent 2px);
+  pointer-events: none;
+  z-index: 999;
+  opacity: 0.25;
+}
+
+a { color: inherit; }
+
+/* ── WINDOW CHROME (the "nav") ── */
+.winbar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+  height: 44px;
+  display: flex; align-items: center;
+  padding: 0 16px;
+  gap: 16px;
+}
+.dots { display: flex; gap: 8px; }
+.dot { width: 11px; height: 11px; border-radius: 50%; }
+.dot.r { background: #5f3a3a; }
+.dot.y { background: #6b5a30; }
+.dot.g { background: #335a3d; }
+
+.winbar-title {
+  flex: 1; text-align: center;
+  font-size: 12px; color: var(--muted);
+}
+
+.winbar-links {
+  display: flex; gap: 18px;
+  font-size: 12px;
+}
+.winbar-links a {
+  text-decoration: none; color: var(--muted);
+  transition: color .15s;
+}
+.winbar-links a:hover { color: var(--green); }
+.winbar-links a::before { content: './'; color: var(--green-dim); }
+
+/* ── TERMINAL BODY ── */
+.term {
+  max-width: 880px; margin: 0 auto;
+  padding: 84px 32px 60px;
+}
+
+.cmd-line {
+  display: flex; gap: 8px; align-items: baseline;
+  margin-bottom: 4px;
+  flex-wrap: wrap;
+}
+.prompt-user { color: var(--green); }
+.prompt-path { color: var(--amber); }
+.prompt-sep { color: var(--muted); }
+.cmd-text { color: var(--text); }
+
+.cursor {
+  display: inline-block; width: 8px; height: 15px;
+  background: var(--green);
+  animation: blink 1s step-end infinite;
+  vertical-align: text-bottom;
+}
+@keyframes blink { 50% { opacity: 0; } }
+
+.output {
+  padding: 4px 0 20px 0;
+  color: var(--text);
+}
+
+/* ── HERO output block ── */
+.hero-block { margin-bottom: 8px; }
+
+.ascii-name {
+  color: var(--green);
+  font-size: 13px;
+  line-height: 1.3;
+  margin: 10px 0 18px;
+  white-space: pre;
+  overflow-x: auto;
+}
+
+.hero-row {
+  display: flex; gap: 28px; align-items: flex-start;
+  margin-top: 4px;
+}
+
+.photo-frame {
+  flex-shrink: 0;
+  display: inline-block;
+  border: 1px solid var(--line);
+  padding: 4px;
+  background: var(--panel);
+}
+.photo-frame img {
+  width: 100px; height: 100px;
+  object-fit: cover; object-position: top center;
+  display: block;
+  filter: grayscale(0.4) contrast(1.1) brightness(0.95);
+}
+
+.hero-copy {
+  font-size: 15px; color: var(--text);
+  line-height: 1.85;
+  max-width: 540px;
+  padding-top: 2px;
+}
+.hero-copy .role { color: var(--green); font-weight: 600; }
+.hero-copy .loc { color: var(--amber); }
+.hero-status {
+  margin-top: 14px;
+  font-size: 13px; color: var(--muted);
+}
+.hero-status .dot {
+  display: inline-block; width: 6px; height: 6px;
+  background: var(--green); border-radius: 50%;
+  margin-right: 8px;
+  box-shadow: 0 0 6px var(--green);
+}
+
+.profile-links {
+  display: flex; gap: 12px; flex-wrap: wrap;
+  margin-top: 22px;
+}
+.profile-link {
+  display: inline-flex; align-items: center; gap: 9px;
+  padding: 11px 18px;
+  border: 1px solid var(--green-dim);
+  color: var(--green);
+  text-decoration: none;
+  font-size: 13px;
+  transition: all .15s;
+}
+.profile-link:hover {
+  background: var(--green);
+  color: var(--bg);
+}
+.profile-link svg { flex-shrink: 0; }
+
+/* ── SECTION HEADER as a command ── */
+.section { margin-top: 36px; }
+
+/* ── PROJECT LISTING (like ls -la output) ── */
+.proj-table {
+  font-size: 13px;
+  margin: 8px 0 20px;
+}
+.proj-row {
+  display: grid;
+  grid-template-columns: 90px 1fr 90px;
+  gap: 12px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--line);
+  color: var(--muted);
+}
+.proj-row.head { color: var(--green-dim); font-weight: 700; }
+.proj-row .pname { color: var(--text); }
+.proj-row .pstatus { color: var(--green); text-align: right; }
+
+/* ── PROJECT DETAIL CARD ── */
+.proj-detail {
+  border: 1px solid var(--line);
+  background: var(--panel);
+  margin: 18px 0 24px;
+}
+.proj-detail-head {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--line);
+  display: flex; justify-content: space-between;
+  align-items: baseline; gap: 12px; flex-wrap: wrap;
+}
+.proj-detail-name {
+  font-size: 16px; font-weight: 700; color: var(--green);
+}
+.proj-detail-stack { font-size: 12px; color: var(--amber); }
+
+.proj-screens {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1px;
+  background: var(--line);
+  padding: 1px;
+}
+.proj-screens img {
+  width: 100%; aspect-ratio: 4/3;
+  object-fit: cover; display: block;
+  filter: grayscale(0.3) contrast(1.05);
+  transition: filter .2s;
+}
+.proj-screens img:hover { filter: grayscale(0); }
+
+.proj-detail-body { padding: 18px 20px 22px; }
+
+.proj-desc {
+  font-size: 13.5px; color: var(--text);
+  line-height: 1.85;
+  margin-bottom: 16px;
+  max-width: 640px;
+}
+.proj-desc .comment { color: var(--muted); }
+
+.flag-list { margin-bottom: 18px; }
+.flag {
+  font-size: 13px; color: var(--text);
+  display: flex; gap: 9px; padding: 3px 0;
+  line-height: 1.6;
+}
+.flag::before { content: '→'; color: var(--green-dim); flex-shrink: 0; }
+
+.proj-links { display: flex; gap: 10px; flex-wrap: wrap; }
+.btn {
+  font-size: 12px;
+  padding: 9px 16px;
+  text-decoration: none;
+  border: 1px solid var(--line);
+  transition: all .15s;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.btn-primary { background: var(--green); color: var(--bg); border-color: var(--green); font-weight: 600; }
+.btn-primary:hover { background: var(--text); border-color: var(--text); }
+.btn-secondary { color: var(--text); }
+.btn-secondary:hover { border-color: var(--green); color: var(--green); }
+
+/* ── SKILLS as key:value pairs ── */
+.skill-block { margin: 6px 0 24px; font-size: 13px; }
+.skill-line {
+  display: flex; gap: 14px; padding: 5px 0;
+  border-bottom: 1px solid var(--line);
+}
+.skill-key { color: var(--muted); width: 110px; flex-shrink: 0; }
+.skill-vals { display: flex; flex-wrap: wrap; gap: 6px; }
+.skill-pill {
+  padding: 2px 9px; font-size: 12px;
+  border: 1px solid var(--line); color: var(--text);
+}
+.skill-pill.hi { border-color: var(--green-dim); color: var(--green); }
+
+/* ── ABOUT as cat output ── */
+.cat-output {
+  font-size: 13.5px; color: var(--text);
+  line-height: 1.9; max-width: 660px;
+  margin: 8px 0 24px;
+  border-left: 2px solid var(--line);
+  padding-left: 18px;
+}
+.cat-output p + p { margin-top: 14px; }
+.cat-output strong { color: var(--green); font-weight: 600; }
+
+/* ── CONTACT ── */
+.contact-block { margin: 8px 0 40px; }
+.contact-links { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+
+footer {
+  border-top: 1px solid var(--line);
+  padding: 20px 32px;
+  text-align: center;
+  font-size: 11px; color: var(--muted);
+}
+footer .ok { color: var(--green-dim); }
+
+/* ── RESPONSIVE ── */
+@media (max-width: 700px) {
+  .winbar { padding: 0 12px; }
+  .winbar-links { gap: 10px; font-size: 10px; }
+  .winbar-title { display: none; }
+  .term { padding: 64px 16px 40px; }
+  .ascii-name { font-size: 9px; }
+  .proj-screens { grid-template-columns: 1fr 1fr; }
+  .proj-detail-head { flex-direction: column; gap: 6px; }
+  .skill-line { flex-direction: column; gap: 4px; }
+  .skill-key { width: auto; }
+  .field-row { flex-direction: column; gap: 0; }
+  .field-key { width: auto; }
+}
+</style>
+</head>
+<body>
+
+<div class="winbar">
+  <div class="dots">
+    <div class="dot r"></div>
+    <div class="dot y"></div>
+    <div class="dot g"></div>
+  </div>
+  <div class="winbar-title">ian@dev: ~/portfolio</div>
+  <div class="winbar-links">
+    <a href="#proyectos">proyectos</a>
+    <a href="#skills">skills</a>
+    <a href="#contacto">contacto</a>
+  </div>
+</div>
+
+<div class="term">
+
+  <!-- WHOAMI -->
+  <div class="cmd-line">
+    <span class="prompt-user">ian@telde</span><span class="prompt-sep">:</span><span class="prompt-path">~</span><span class="prompt-sep">$</span>
+    <span class="cmd-text">whoami</span>
+  </div>
+  <div class="output hero-block">
+    <div class="hero-row">
+      <div class="photo-frame">
+        <img src="assets/photo.jpg" alt="Ian López Cabrera">
+      </div>
+      <div class="hero-copy">
+        Ian López Cabrera, <span class="role">desarrollador de videojuegos</span>
+        de Telde, <span class="loc">Gran Canaria</span>. Empecé en el sector con el curso IFCD57
+        de Programación para Videojuegos en Unity (300h, SCE · Grupo ADF · CIFE Telde), y desde
+        entonces sigo formándome por mi cuenta. Trabajo con Unity y C#, con foco en mecánicas
+        creativas más que en seguir fórmulas ya hechas.
+        <div class="hero-status"><span class="dot"></span>Buscando mi primera oportunidad en el sector</div>
+      </div>
+    </div>
+    <div class="profile-links">
+      <a class="profile-link" href="https://github.com/dotorila234" target="_blank">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.305-5.466-1.334-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg>
+        <span>github.com/dotorila234</span>
+      </a>
+      <a class="profile-link" href="https://dotorila234.itch.io" target="_blank">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M4.32 3.64C3.06 4.37.36 7.49 0 8.22v1.6c0 1.6 1.55 3.1 2.95 3.1.05 0 .1 0 .15-.01.1.36.55 1.04 1.55 1.04 1.1 0 1.5-.79 1.55-1.06.05.27.5 1.06 1.6 1.06.95 0 1.5-.61 1.6-1.06.1.45.65 1.06 1.6 1.06.95 0 1.5-.61 1.6-1.06.1.45.65 1.06 1.6 1.06.95 0 1.45-.61 1.55-1.06.05.27.45 1.06 1.55 1.06 1 0 1.45-.68 1.55-1.04.05.01.1.01.15.01 1.4 0 2.95-1.5 2.95-3.1v-1.6C23.64 7.49 20.94 4.37 19.68 3.64 17.92 2.7 14.74 2.36 12 2.36c-2.74 0-5.92.34-7.68 1.28zM12 4.36c2.34 0 5.3.3 6.7 1.06.9.49 2.74 2.7 2.94 3.6 0 .5-.55.9-.95.9-.7 0-1.05-.5-1.4-1.1l-.3-.5h-13.98l-.3.5c-.35.6-.7 1.1-1.4 1.1-.4 0-.95-.4-.95-.9.2-.9 2.04-3.11 2.94-3.6 1.4-.76 4.36-1.06 6.7-1.06zM3.7 11.36c.3.13.65.2 1 .2.85 0 1.6-.39 2.1-1 .5.6 1.25 1 2.1 1 .85 0 1.6-.39 2.1-1 .5.6 1.25 1 2.1 1 .85 0 1.6-.39 2.1-1 .5.6 1.25 1 2.1 1 .35 0 .7-.07 1-.2v6.5c-.5 1.1-1.85 1.94-3.3 1.94H7c-1.45 0-2.8-.84-3.3-1.94v-6.5zM9 13.5c-.85 0-1.55.7-1.55 1.55v1.6c0 .85.7 1.55 1.55 1.55h6c.85 0 1.55-.7 1.55-1.55v-1.6c0-.85-.7-1.55-1.55-1.55H9z"/></svg>
+        <span>dotorila234.itch.io</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- LS PROYECTOS -->
+  <div class="section" id="proyectos">
+    <div class="cmd-line">
+      <span class="prompt-user">ian@telde</span><span class="prompt-sep">:</span><span class="prompt-path">~</span><span class="prompt-sep">$</span>
+      <span class="cmd-text">proyectos</span>
+    </div>
+    <div class="output">
+      <div class="proj-table">
+        <div class="proj-row">
+          <span class="pname">unity/</span>
+          <span class="pname">Dragon Ball Typing Game</span>
+          <span class="pstatus">publicado</span>
+        </div>
+      </div>
+
+      <div class="proj-detail">
+        <div class="proj-detail-head">
+          <div class="proj-detail-name">Dragon Ball Typing Game</div>
+          <div class="proj-detail-stack">unity · c#</div>
+        </div>
+        <div class="proj-screens">
+          <img src="assets/screen-menu.jpg" alt="Menú principal">
+          <img src="assets/screen-difficulty.jpg" alt="Selección de dificultad">
+          <img src="assets/screen-gameplay.jpg" alt="Gameplay">
+          <img src="assets/screen-results.jpg" alt="Resultados">
+        </div>
+        <div class="proj-detail-body">
+          <p class="proj-desc">
+            Proyecto final del curso IFCD57, publicado en 2026. Es un juego de pulsación de teclas
+            con estética de Dragon Ball: hay que acertar la secuencia correcta bajo presión
+            de tiempo para acumular la mayor puntuación posible.
+          </p>
+          <div class="flag-list">
+            <div class="flag">Tres modos de dificultad: fácil, normal y difícil</div>
+            <div class="flag">Sistema de combos con rangos finales según rendimiento</div>
+            <div class="flag">Interfaz con estética Dragon Ball</div>
+            <div class="flag">Control de audio completo (música, efectos, voz)</div>
+            <div class="flag">Documento de diseño (GDD) propio del proyecto — <a href="https://docs.google.com/document/d/1nwRfZjunVYADWnZgj9F5PWvuLyzGcNWkb989qz4-5DQ" target="_blank" style="color:var(--amber); text-decoration: underline; text-decoration-color: rgba(217,168,95,0.3);">verlo aquí</a></div>
+          </div>
+          <div class="proj-links">
+            <a class="btn btn-primary" href="https://dotorila234.itch.io/dragon-ball-typing-game" target="_blank">jugar →</a>
+            <a class="btn btn-secondary" href="https://github.com/dotorila234/DBTG" target="_blank">código fuente</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SKILLS -->
+  <div class="section" id="skills">
+    <div class="cmd-line">
+      <span class="prompt-user">ian@telde</span><span class="prompt-sep">:</span><span class="prompt-path">~</span><span class="prompt-sep">$</span>
+      <span class="cmd-text">skills</span>
+    </div>
+    <div class="output">
+      <div class="skill-block">
+        <div class="skill-line">
+          <span class="skill-key">Lenguajes</span>
+          <div class="skill-vals">
+            <span class="skill-pill hi">C#</span>
+            <span class="skill-pill hi">Python</span>
+            <span class="skill-pill">Lua</span>
+            <span class="skill-pill">Kotlin</span>
+            <span class="skill-pill">HTML</span>
+            <span class="skill-pill">Shell Script</span>
+          </div>
+        </div>
+        <div class="skill-line">
+          <span class="skill-key">Herramientas</span>
+          <div class="skill-vals">
+            <span class="skill-pill hi">Unity</span>
+            <span class="skill-pill">Roblox Studio</span>
+            <span class="skill-pill">Blender</span>
+            <span class="skill-pill">Git</span>
+            <span class="skill-pill">Desarrollo de apps móviles</span>
+          </div>
+        </div>
+        <div class="skill-line">
+          <span class="skill-key">Sistema operativo</span>
+          <div class="skill-vals">
+            <span class="skill-pill">Linux</span>
+            <span class="skill-pill">Windows</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONTACT -->
+  <div class="section" id="contacto">
+    <div class="cmd-line">
+      <span class="prompt-user">ian@telde</span><span class="prompt-sep">:</span><span class="prompt-path">~</span><span class="prompt-sep">$</span>
+      <span class="cmd-text">contacto</span>
+    </div>
+    <div class="output contact-block">
+      <p class="proj-desc" style="margin-bottom:18px;">
+        Abierto a puestos junior, prácticas o cualquier oportunidad en el sector del videojuego.
+      </p>
+      <div class="contact-links">
+        <a class="btn btn-primary" href="mailto:ianlopezcabrera1@gmail.com">ianlopezcabrera1@gmail.com</a>
+        <a class="btn btn-secondary" href="tel:+34722674028">722 67 40 28</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="cmd-line">
+    <span class="prompt-user">ian@telde</span><span class="prompt-sep">:</span><span class="prompt-path">~</span><span class="prompt-sep">$</span>
+    <span class="cursor"></span>
+  </div>
+
+</div>
+
+</body>
+</html>
